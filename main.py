@@ -5,7 +5,7 @@ from colours import *
 from slider import Slider
 from tkinter import Tk,colorchooser
 from button_images import brush_matrix_img,eraser_matrix_img,dropper_matrix_img,fill_matrix_img,save_matrix_image,load_matrix_image,clear_matrix_image
-from button_images import grid_matrix_image
+from button_images import grid_matrix_image,line_matrix_image
 from buttons import Button,convert_matrix_to_img
 from timer import Timer
 import os
@@ -33,7 +33,7 @@ class colourBar():
         self.color = (160,160,160)
         self.surface.fill(self.color)
 
-        clrs = [WHITE,absBlack,GREAY,BLACK,GREEN,TURTLEGREEN,VIOLET,ORANGE,CYAN,BLUE,PINK,YELLOW,AMBER,MAROON,OLIVE,TEAL]
+        clrs = [WHITE,absBlack,GREAY,BLACK,GREEN,TURTLEGREEN,VIOLET,ORANGE,CYAN,BLUE,PINK,YELLOW,AMBER,MAROON,OLIVE,TEAL,TRANSPARENT]
         self.row_items = row_items if row_items is not None else self.height//40
         self.col_items = col_items if col_items is not None else self.width//40
         
@@ -47,7 +47,7 @@ class colourBar():
         self._y = padding_y
 
         self.colours = [
-            [colourButton(clrs[(row*self.col_items + col)%len(clrs)],self._x+col * col_gap,self._y+self.position_y +row * row_gap,self.win )
+            [colourButton(clrs[(row*self.col_items + col) if (row*self.col_items + col) < len(clrs) else len(clrs)-1],self._x+col * col_gap,self._y+self.position_y +row * row_gap,self.win )
             for row in range(self.row_items)]
                 for col in range(self.col_items)]
 
@@ -99,7 +99,6 @@ class colourBar():
         color_code = colorchooser.askcolor(title ="Choose color")
         if color_code[0] is None:
             return
-        print(color_code)
         self.colours[x][y].colour = color_code[0]
         self.selected_block = (x,y)
         self.colours[x][y].stroke()
@@ -165,7 +164,8 @@ def main():  # sourcery no-metrics
     
     
     clock = pygame.time.Clock()
-    WIN = pygame.display.set_mode((570, 612))
+    WIN = pygame.display.set_mode((620, 612))
+    # WIN = pygame.display.set_mode((612, 612))
 
     pygame.display.set_caption('Art of Life')
     pygame_icon = pygame.image.load(os.path.join('assets','brush.png'))
@@ -181,55 +181,71 @@ def main():  # sourcery no-metrics
 
     surface = pygame.Surface((WIN.get_width()-board.width, WIN.get_height()))
     surface.fill((160,160,160))
-    pos_x = (WIN.get_width() - board.width - 40)/2 + board.width
+    # pos_x = (WIN.get_width() - board.width - 40)/2 + board.width
+    pos_x = 521
     pos_y =  20 -4
     spacing_y = 20
 
+    row_items = 4
+
+    # slider = Slider(521+20,550,WIN)
+
     buttons = []
 
+    idx = 0
     # ! can't put lambda collectively because it also runs the function
     for i, func, val in [
         (brush_matrix_img,   lambda : board.set_pen_type('pen'),'pen'),
         (eraser_matrix_img,  lambda : board.set_pen_type('eraser'),'eraser'),
-        (dropper_matrix_img, lambda : board.set_pen_type('line'),'line'),
+        (line_matrix_image,  lambda : board.set_pen_type('line'),'line'),
         (fill_matrix_img,    lambda : board.set_pen_type('fill'),'fill'),
+        (dropper_matrix_img, lambda : board.set_pen_type('dropper'),'dropper'),
         (save_matrix_image,  lambda : board.save(), None),
         (load_matrix_image,  lambda : board.load(), None),
         (clear_matrix_image, lambda : board.clear(), None),
         (grid_matrix_image , lambda : board.toggle_grid(), None)]:
-        
+        idx += 1
         buttons.append(Button(color = (255,255,255),x = pos_x,y = pos_y, width= 40,height=40,text = convert_matrix_to_img(i),win = WIN,func = func))
         buttons[-1].val = val
         pos_y += 40 + spacing_y
+        # indicies start from
+        if idx >= row_items:
+            pos_x += 40 + 10
+            pos_y = 20 - 4
+            idx = 0
+        
     
     board.set_pen_type('pen')
-
-    click_timer = Timer(0.1)
     while run:
-        if pygame.mouse.get_pressed()[0] and not click_timer.start:
-            click_timer.start_timer()
+        if pygame.mouse.get_pressed()[0]:
             x,y = get_mouse_position(board)
             clr = clr_bar.clicked(pygame.mouse.get_pos())
             board.pen_size = int(slider.slideVal )
             if clr:
                 board.pen_colour = clr
+                if board.pen_type == 'eraser':
+                        board.pen_type = 'pen'
             if board.clicked(x, y) != -1:
                 # undo.append([cube.color for cube in board.cubes])
                 pass
 
         # checks for right click
-        elif pygame.mouse.get_pressed()[2] and not click_timer.start:
-            click_timer.start_timer()
+        elif pygame.mouse.get_pressed()[2] :
             x,y = get_mouse_position(board)
             if board.delete(x,y) == -1:
                 clr_bar.change_colour(pygame.mouse.get_pos())
+                i,j = clr_bar.selected_block
+                if board.pen_colour != clr_bar.colours[i][j].colour:
+                    board.pen_colour = clr_bar.colours[i][j].colour
+                    if board.pen_type == 'eraser':
+                        board.pen_type = 'pen'
         
         clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
             if event.type == pygame.KEYDOWN:
-                click_events(event, board,buttons)
+                click_events(event, board)
 
         # this take cares of border of button button no core functionality
         for button in buttons:
@@ -242,12 +258,9 @@ def main():  # sourcery no-metrics
         WIN.blit(surface,(board.width,0))
         for btn in buttons:
             btn.update()
-        board.pen_size = slider.slideVal
+        board.pen_size = int(slider.slideVal)
         slider.update()
-
         pygame.display.update()
-
-        click_timer.update()
     pygame.quit()
 
 

@@ -111,7 +111,7 @@ def main():
     path =  askopenfilename(title="Open File to convert to matrix", filetypes=[("All files", "*.*"),("Portable Network Graphics", "*.png"), ("JPEG", "*.jpg"), ("GIF", "*.gif")])
     if path == '' or path is None:
         path = 'assets/load.jpg'
-    saveImage = pygame.transform.scale(pygame.image.load(path), (25,25))
+    saveImage = pygame.transform.scale(pygame.image.load(path), (32,32))
 
     fillImage = convert_img_to_matrix([saveImage])
     fillImage = convert_matrix_to_img(fillImage)
@@ -119,11 +119,13 @@ def main():
 
     run = True
     while run:
+        WIN.fill((230,230,230))
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
         for button in buttons:
             button.update()
+        pygame.display.update()
     pygame.quit()
 
 if __name__ == '__main__':

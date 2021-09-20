@@ -1,7 +1,6 @@
 from colours import BLACK
 import pygame
-
-# import cv2
+import time
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename,asksaveasfilename
 
@@ -63,6 +62,11 @@ class Grid():
         elif self.pen_type == 'eraser':
             self.delete(i,j)
             self.draw()
+            return
+        elif self.pen_type == 'dropper':
+            self.pen_colour = self.cubes[i][j].color
+            time.sleep(0.15)
+            self.pen_type = 'pen'
             return
 
         # reseting the line tool
