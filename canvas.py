@@ -226,7 +226,7 @@ class Grid():
         self.draw_grid = not self.draw_grid
         self.draw()
 
-
+        
 class Cube():
     def __init__(self,row, col, width, height, cols, rows,win):
         self.row = row

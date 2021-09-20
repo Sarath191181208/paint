@@ -186,7 +186,7 @@ def main():  # sourcery no-metrics
     pos_y =  20 -4
     spacing_y = 20
 
-    row_items = 4
+    row_items = 5
 
     # slider = Slider(521+20,550,WIN)
 

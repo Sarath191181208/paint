@@ -31,14 +31,16 @@ class Slider():
             pygame.mouse.get_pos()[1] < self.pos[1]+self.slider_height/2  +threshold      )
 
     def update(self):
+        clr =  (250, 250, 250)
         if pygame.mouse.get_pressed()[0]:
             if self.is_hovering() or self.clicked:
                 self.clicked = True
                 self.pos[1] = max(self.drawPos[1]-self.slider_height*3, min(pygame.mouse.get_pos()[1], self.drawPos[1]+self.slider_height*3))
                 clr  = (60, 80,180) 
+            else:
+                self.clicked = False
         else:
             self.clicked = False
-            clr =  (250, 250, 250)
 
         if clr != self.color:
             self.color = clr
