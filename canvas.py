@@ -1,7 +1,7 @@
 from colours import BLACK
 import pygame
 
-import cv2
+# import cv2
 from tkinter import Tk
 from tkinter.filedialog import askopenfilename,asksaveasfilename
 
@@ -25,6 +25,7 @@ class Grid():
         self.pen_colour = BLACK
         self.pen_size = 1
         self.pen_type = 'pen'
+        self.task = []
         self.start = None
 
         self.end = None
@@ -50,8 +51,8 @@ class Grid():
     def clicked(self,i,j):
         if i < 0 or i >= self.rows or j < 0 or j >= self.cols:
             return -1
-        if self.pen_type == 'fill':
 
+        if self.pen_type == 'fill':
             self.fill(i,j)
             self.draw()
             return
@@ -63,6 +64,11 @@ class Grid():
             self.delete(i,j)
             self.draw()
             return
+
+        # reseting the line tool
+        if self.start is not None and self.end is None:
+            self.start = None
+
         for x in range(max(0,i-self.pen_size+1),min(i+self.pen_size,self.rows)):
             for y in range(max(0,j-self.pen_size+1),min(j+self.pen_size,self.cols)):
                 self.cubes[x][y].color = self.pen_colour
@@ -107,11 +113,19 @@ class Grid():
             latest.color = self.pen_colour
             cube_nbrs(latest.row,latest.col)
         self.draw()
+        return True
     
     def clear(self):
         for row in self.cubes:
+            i = 0 
             for cube in row:
+                if i == 7:
+                    pygame.display.update()
+                    i = 0
+                i += 1
                 cube.reset()
+                cube.draw()
+        self.draw_grid = False
         self.draw()
 
     def save(self):                            # save the current screen to a file
@@ -126,62 +140,88 @@ class Grid():
         size = (self.width,self.height)
         pos = (0,0)
         image = pygame.Surface(size)                # Create image surface
+        toggle = False
+        if self.draw_grid:
+            self.draw_grid = False
+            self.draw()
+            toggle = True
+
         image.blit(self.win,(0,0),(pos,size))       # Blit portion of the display to the image
+
+        if toggle:
+            self.draw_grid = True
+            self.draw()
         pygame.image.save(image,name)               # Save the image to the disk
 
     def load(self):
-        pixel_x,pixel_y = self.rows,self.cols
         window = Tk()
         window.withdraw()
         path =  askopenfilename(title="Open File", filetypes=self.availableFormats)
         if path == '' or path is None:
             return
-        img = cv2.imread(path,cv2.IMREAD_COLOR)
+            
+        img = pygame.transform.scale(pygame.image.load(path), (self.rows,self.cols))
 
-        img = cv2.resize(img, (pixel_x,pixel_y), interpolation = cv2.INTER_AREA)
+        for i in range(self.cols):
+            for j in range(self.rows):
+                # for images there are 4 channels and we only need 3 4th channel is for opacity
+                self.cubes[i][j].color = tuple(img.get_at((i,j))[0:3])
 
-        for i in range(pixel_x):
-            for j in range(pixel_y):
-                # RGB  ---- > BGR
-                self.cubes[i][j].color = tuple(img[i][j][::-1])
-                # self.cubes[i][j].color = (img[i][j][2],img[i][j][1],img[i][j][0])
-        
         self.draw()
 
     def draw_line(self,pos):
+
         if self.start is None:
             self.start = self._extracted_from_draw_line_3(pos)
 
         elif self.end is None:
             self.end = self._extracted_from_draw_line_3(pos)
-            strt = 0
-            end = 0
-            iter_dir = 0
-            if abs(self.start.row - self.end.row)>abs(self.start.col - self.end.col):
-                strt = min(self.start.row,self.end.row)
-                end = max(self.start.row,self.end.row)
-                iter_dir = 1
-            else:
-                strt = min(self.start.col,self.end.col)
-                end = max(self.start.col,self.end.col)
-            for i in range(strt,end):
-                if iter_dir:
-                    self.cubes[i][self.start.col].color = self.pen_colour
-                else:
-                    self.cubes[self.start.row][i].color = self.pen_colour
+
+            # ||||
+            i = min(self.start.row,self.end.row)
+            while i < max(self.start.row,self.end.row):
+                i += 1
+                self.cubes[i][self.start.col].color = self.pen_colour
+
+            # this is to avoid a point being missed
+            if self.end.row< self.start.row:
+                self.cubes[self.end.row][self.start.col].color = self.pen_colour
+
+            # ----
+            i = min(self.start.col,self.end.col)
+            while i < max(self.start.col,self.end.col):
+                i += 1
+                self.cubes[self.end.row][i].color = self.pen_colour
+            
             self.draw()
             self.start = self.end
             self.end = None
-
-
+            return True
 
     def  _extracted_from_draw_line_3(self, pos):
         result = self.cubes[pos[0]][pos[1]]
         result.clicked(self.pen_colour)
         return result
 
+    def undo(self):
+        if len(self.task) == 0 :
+            return
+        print(self.task)
+        for i in self.task:
+            print(i[0].color)
+            i[0].color = i[1]
+        self.draw()
+    
+    def set_pen_type(self,pen_type):
+        if pen_type is None:
+            print('pen_type can"t be None')
+            return
+        self.pen_type = pen_type
+    
+    def toggle_grid(self):
+        self.draw_grid = not self.draw_grid
+        self.draw()
 
-                            
 
 class Cube():
     def __init__(self,row, col, width, height, cols, rows,win):
@@ -195,6 +235,7 @@ class Cube():
         self.win = win
         WHITE = (255,255,255)
         self.color = WHITE
+
     def draw(self):
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
@@ -206,7 +247,6 @@ class Cube():
         WHITE = (255,255,255)
         self.color = WHITE
 
-    
     def clicked(self,colour):
         self.color = colour
         self.draw()

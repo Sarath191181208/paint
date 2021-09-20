@@ -1,7 +1,9 @@
 
 import pygame
 from button_images import fill_matrix_img
-
+import tkinter
+from tkinter.filedialog import askopenfilename
+from timer import Timer
 def convert_matrix_to_img(img_matrix):
     dimension_x,dimension_y = len(img_matrix),len(img_matrix[0])
     new_img = pygame.Surface((dimension_x,dimension_y))
@@ -42,7 +44,7 @@ def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColo
     return (pygame.font.Font(font, fontSize)).render(txt, True, fontColour)
 
 class Button():
-    def __init__(self, color = (255,255,255), x:int = 0,y:int = 0,width:int = 0,height:int = 0, text='',win= None):
+    def __init__(self, color = (255,255,255), x:int = 0,y:int = 0,width:int = 0,height:int = 0, text='',win= None,func = None):
         self.color = color
         self.x = x
         self.y = y
@@ -58,19 +60,19 @@ class Button():
         self.surface.fill(self.color)
         self.val = ''
         self.clicked = False
-        
+        self.function = func
+        self.timer = Timer(0.2)
         self.draw()
 
     def draw(self,outline=None):
         
         #Call this method to draw the button on the screen
-        self.win.blit(self.surface,(self.x-2,self.y-2))
+        # self.win.blit(self.surface,(self.x-2,self.y-2))
         if outline or self.clicked:
             pygame.draw.rect(self.win, (0,0,0), (self.x-2,self.y-2,self.width+4,self.height+4),0)
             
         pygame.draw.rect(self.win, self.color, (self.x,self.y,self.width,self.height),0)
         self.win.blit(self.text, (self.x + (self.width/2 - self.text.get_width()/2), self.y + (self.height/2 - self.text.get_height()/2)))
-        pygame.display.update()
 
     def is_hovering(self) -> bool:
         #Pos is the mouse position or a tuple of (x,y) coordinates
@@ -81,10 +83,19 @@ class Button():
             and pos[1] > self.y
             and pos[1] < self.y + self.height
         )
+
     def update(self):
+        self.timer.update()
+
+        if self.clicked:
+            self.draw(1)
+            return
+
         if self.is_hovering():
-            if pygame.mouse.get_pressed()[0]:
+            if pygame.mouse.get_pressed()[0] and not self.timer.start:
                 self.clicked = True
+                self.function()
+                self.timer.start_timer()
             self.draw(1)
         else:
             self.draw()
@@ -94,7 +105,13 @@ def main():
     WIN = pygame.display.set_mode((540, 600))
     pygame.display.update()
     buttons = []
-    saveImage = pygame.transform.scale(pygame.image.load("assets/load.jpg"), (25,25))
+
+    window = tkinter.Tk()
+    window.withdraw()
+    path =  askopenfilename(title="Open File to convert to matrix", filetypes=[("All files", "*.*"),("Portable Network Graphics", "*.png"), ("JPEG", "*.jpg"), ("GIF", "*.gif")])
+    if path == '' or path is None:
+        path = 'assets/load.jpg'
+    saveImage = pygame.transform.scale(pygame.image.load(path), (25,25))
 
     fillImage = convert_img_to_matrix([saveImage])
     fillImage = convert_matrix_to_img(fillImage)

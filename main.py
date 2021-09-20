@@ -4,8 +4,12 @@ from canvas import Grid
 from colours import *
 from slider import Slider
 from tkinter import Tk,colorchooser
-from button_images import brush_matrix_img,eraser_matrix_img,dropper_matrix_img,fill_matrix_img,save_matrix_image,load_matrix_image
+from button_images import brush_matrix_img,eraser_matrix_img,dropper_matrix_img,fill_matrix_img,save_matrix_image,load_matrix_image,clear_matrix_image
+from button_images import grid_matrix_image
 from buttons import Button,convert_matrix_to_img
+from timer import Timer
+import os
+
 pygame.init()
 
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
@@ -29,7 +33,7 @@ class colourBar():
         self.color = (160,160,160)
         self.surface.fill(self.color)
 
-        clrs = [absBlack,WHITE,GREAY,BLACK,GREEN,TURTLEGREEN,VIOLET,ORANGE,CYAN,BLUE,PINK,YELLOW,AMBER,MAROON,OLIVE,TEAL]
+        clrs = [WHITE,absBlack,GREAY,BLACK,GREEN,TURTLEGREEN,VIOLET,ORANGE,CYAN,BLUE,PINK,YELLOW,AMBER,MAROON,OLIVE,TEAL]
         self.row_items = row_items if row_items is not None else self.height//40
         self.col_items = col_items if col_items is not None else self.width//40
         
@@ -115,43 +119,6 @@ class colourButton():
         pygame.draw.rect(self.win, (0,0,0), pygame.Rect(self.x, self.y, 20, 20),3)
         pygame.display.update()
 
-class Container:
-    def __init__(self,width,height,x,y,WIN) -> None:
-        self.width,self.height = width,height
-        self.x,self.y = x,y 
-        self.surface = pygame.Surface((width,height))
-        self.surface.fill((160,160,160))
-        self.win = WIN
-        self.childern = []
-        self.just_hovering= False
-        self.selected = None
-        self.draw()
-
-    def draw(self):
-        self.win.blit(self.surface,(self.x,self.y))
-        for child in self.childern:
-            if self.selected == child:
-                child.draw()
-    def is_hovering(self):
-        pos = pygame.mouse.get_pos()
-        return (
-            pos[0] > self.x
-            and pos[1] > self.y
-        )
-
-    def update(self):
-        for child in self.childern:
-            child.update()
-        if self.is_hovering() and pygame.mouse.get_pressed()[0]:
-            self.clicked()
-    def clicked(self):
-        global actions
-        for child in self.childern:
-            if child.clicked == True and child != self.selected:
-                self.selected.clicked = False
-                self.selected = child
-
-
 
 def get_mouse_position(board):
         x, y = pygame.mouse.get_pos()
@@ -163,53 +130,34 @@ def get_mouse_position(board):
 
 def main():  # sourcery no-metrics
 
-    undo = [] 
-    redo  = []
-
-    def click_events(event, board,container):
+    def click_events(event, board):
         if event.key == pygame.K_f:
-            board.pen_type = 'fill'
+            board.set_pen_type('fill')
         if event.key == pygame.K_e:
-            board.pen_type = 'eraser'
+            board.set_pen_type('eraser')
+        if event.key == pygame.K_n:
+            board.set_pen_type('line')
+        if event.key == pygame.K_p:
+            board.set_pen_type('pen')
+
         if event.key == pygame.K_s:
             board.save()
         if event.key == pygame.K_l:
             board.load()
-        if event.key == pygame.K_n:
-            board.pen_type = 'line'
-        if event.key == pygame.K_p:
-            board.pen_type = 'pen'
+        if event.key == pygame.K_c:
+            board.clear()
         if event.key == pygame.K_d:
-            board.draw_grid = not board.draw_grid
-            board.draw()
+            board.toggle_grid()
+
         if event.key == pygame.K_u:
-            if len(undo) != 0:
-                print('undo')
-                redo.append(undo.pop())
-                for i,row in enumerate(redo[-1]):
-                    for j,color_val in enumerate(redo[-1][i]):
-                        board.cubes[i][j] = color_val
-                board.draw()
-                pygame.display.update()
-        # if event.key == pygame.K_r:
-        #     if len(redo) != 0:
-        #         undo.append(redo.pop())
-        #         board.cubes = undo[-1]
-        #         board.draw()
-        # pygame.display.update()
-            
-        for child in container.childern:
-            if child.val == board.pen_type:
-                child.clicked = True
-                container.selected.clicked = False
-                container.selected = child
+            board.undo()
 
     # naming convention is a bit off
-    # this denotes the dimensions of image
 
     # size of the screen from pyautogui
     screen_x,screen_y = size()
-    pixel_x,pixel_y = 128,128
+    # screen_x,screen_y = 1200,800
+    pixel_x,pixel_y = 64,64
     screen_x,screen_y = screen_x//64,screen_y//64
     # screen_x,screen_y = screen_x//pixel_x,screen_y//pixel_y
     screen_x = min(8,screen_x,screen_y)
@@ -220,74 +168,86 @@ def main():  # sourcery no-metrics
     WIN = pygame.display.set_mode((570, 612))
 
     pygame.display.set_caption('Art of Life')
-    pygame_icon = pygame.image.load('assets/brush.png')
+    pygame_icon = pygame.image.load(os.path.join('assets','brush.png'))
     pygame.display.set_icon(pygame_icon)
-    FPS = 20
+    FPS = 60
     run = True
 
     board = Grid(cols = pixel_x, rows = pixel_y, width = 64*screen_x, height = 64*screen_y, WIN = WIN)
     clr_bar = colourBar(width = board.width,height = 100, position_x = 0, position_y = board.height, win = WIN)
     # clr_bar = colourBar(width = 200,height = 100, position_x = 0, position_y = board.height, win = WIN)
-    
-    container = Container(width=WIN.get_width()-board.width,height=WIN.get_height(),x = board.width,y = 0,WIN = WIN)
+
     slider = Slider(board.width+(WIN.get_width()-board.width)/2,550,WIN)
-    
-    # container.childern.append(slider)
-    pos_x = board.width
-    pos_y =  20
-    # pos_y = slider.slider_height*7+WIN.get_width() - board.width + 20
-    
-    for i,val in [(brush_matrix_img,'brush'),(eraser_matrix_img,'eraser'),(dropper_matrix_img,'line'),(fill_matrix_img,'fill')]:
-        container.childern.append(Button(color = (255,255,255),x = (WIN.get_width() - board.width - 40)/2 + board.width,y = pos_y-4, width= 40,height=40,text = convert_matrix_to_img(i),win = WIN))
-        container.childern[-1].val = val
-        pos_y += 40 + 20
+
+    surface = pygame.Surface((WIN.get_width()-board.width, WIN.get_height()))
+    surface.fill((160,160,160))
+    pos_x = (WIN.get_width() - board.width - 40)/2 + board.width
+    pos_y =  20 -4
+    spacing_y = 20
 
     buttons = []
-    save_button = Button(color = (255,255,255),x = (WIN.get_width() - board.width - 40)/2 + board.width,y = pos_y-4, width= 40,height=40,text = convert_matrix_to_img(save_matrix_image),win = WIN)
-    buttons.append(save_button)
-    pos_y += 40 + 20
-    load_button = Button(color = (255,255,255),x = (WIN.get_width() - board.width - 40)/2 + board.width,y = pos_y-4, width= 40,height=40,text = convert_matrix_to_img(load_matrix_image),win = WIN)
-    buttons.append(load_button)
 
-    container.selected = container.childern[0]
-    container.childern[0].clicked =True
+    # ! can't put lambda collectively because it also runs the function
+    for i, func, val in [
+        (brush_matrix_img,   lambda : board.set_pen_type('pen'),'pen'),
+        (eraser_matrix_img,  lambda : board.set_pen_type('eraser'),'eraser'),
+        (dropper_matrix_img, lambda : board.set_pen_type('line'),'line'),
+        (fill_matrix_img,    lambda : board.set_pen_type('fill'),'fill'),
+        (save_matrix_image,  lambda : board.save(), None),
+        (load_matrix_image,  lambda : board.load(), None),
+        (clear_matrix_image, lambda : board.clear(), None),
+        (grid_matrix_image , lambda : board.toggle_grid(), None)]:
+        
+        buttons.append(Button(color = (255,255,255),x = pos_x,y = pos_y, width= 40,height=40,text = convert_matrix_to_img(i),win = WIN,func = func))
+        buttons[-1].val = val
+        pos_y += 40 + spacing_y
+    
+    board.set_pen_type('pen')
 
+    click_timer = Timer(0.1)
     while run:
-        if pygame.mouse.get_pressed()[0]:
+        if pygame.mouse.get_pressed()[0] and not click_timer.start:
+            click_timer.start_timer()
             x,y = get_mouse_position(board)
             clr = clr_bar.clicked(pygame.mouse.get_pos())
             board.pen_size = int(slider.slideVal )
             if clr:
                 board.pen_colour = clr
             if board.clicked(x, y) != -1:
-                undo.append([cube.color for cube in board.cubes])
+                # undo.append([cube.color for cube in board.cubes])
+                pass
 
         # checks for right click
-        elif pygame.mouse.get_pressed()[2]:
+        elif pygame.mouse.get_pressed()[2] and not click_timer.start:
+            click_timer.start_timer()
             x,y = get_mouse_position(board)
             if board.delete(x,y) == -1:
                 clr_bar.change_colour(pygame.mouse.get_pos())
-            else:
-                undo.append([cube.color for cube in board.cubes])
-        board.pen_type = container.selected.val
         
         clock.tick(FPS)
         for event in pygame.event.get():
             if event.type == pygame.QUIT:
                 run = False
             if event.type == pygame.KEYDOWN:
-                click_events(event, board,container)
-            if save_button.clicked:
-                save_button.clicked = False
-                board.save()
-            if load_button.clicked:
-                load_button.clicked = False
-                board.load()
-        for btn in buttons :
-            btn.update()
-        slider.update()
-        container.update()
+                click_events(event, board,buttons)
 
+        # this take cares of border of button button no core functionality
+        for button in buttons:
+            if button.val == board.pen_type:
+                button.clicked = True
+            else:
+                button.clicked = False
+
+        # drawing objects
+        WIN.blit(surface,(board.width,0))
+        for btn in buttons:
+            btn.update()
+        board.pen_size = slider.slideVal
+        slider.update()
+
+        pygame.display.update()
+
+        click_timer.update()
     pygame.quit()
 
 

@@ -14,17 +14,14 @@ class Slider():
         self.win = win
         self.draw()
     def draw(self):
-            if self.slideVal != self.Remap(-self.slider_height*3,self.slider_height*3,1,5,(self.pos[1]- self.drawPos[1])):
-                self.slideVal = abs(6-self.Remap(-self.slider_height*3,self.slider_height*3,1,5,(self.pos[1]- self.drawPos[1])))
-                pygame.draw.rect(self.win, (220,220,220), (self.drawPos[0]-10, self.drawPos[1]-self.slider_height*4-12, 20, 20))
-                self.valMes = self.font.render(str(int(self.slideVal)), True, (30,30,30))
-                self.win.blit(self.valMes, (self.drawPos[0]-self.valMes.get_width()/2, self.drawPos[1]-self.slider_height*4-self.valMes.get_height()/2))
-            
-            
             pygame.draw.rect(self.win, (140,140,140), (self.drawPos[0]-self.slider_width/2, self.drawPos[1]-self.slider_height*3, self.slider_width, self.slider_height*7))
             self.win.blit(self.subsurface, (self.pos[0]-self.slider_width/2, self.pos[1]))
-            pygame.display.update()
     
+            self.slideVal = abs(6-self.Remap(-self.slider_height*3,self.slider_height*3,1,5,(self.pos[1]- self.drawPos[1])))
+            pygame.draw.rect(self.win, (220,220,220), (self.drawPos[0]-10, self.drawPos[1]-self.slider_height*4-12, 20, 20))
+            self.valMes = self.font.render(str(int(self.slideVal)), True, (30,30,30))
+            self.win.blit(self.valMes, (self.drawPos[0]-self.valMes.get_width()/2, self.drawPos[1]-self.slider_height*4-self.valMes.get_height()/2))
+
     def is_hovering(self):
         threshold = 10
         return (
@@ -46,9 +43,8 @@ class Slider():
         if clr != self.color:
             self.color = clr
             self.subsurface.fill(self.color)
-            self.draw()
-        if self.clicked:
-            self.draw()
+        self.draw()
+
 
     def Remap(self,oldlow, oldhigh, newlow, newhigh, value):
         oldRange = (oldhigh - oldlow)
