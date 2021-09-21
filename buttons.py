@@ -1,6 +1,6 @@
 
 import pygame
-from button_images import fill_matrix_img
+from button_matrices import fill_matrix_img
 import tkinter
 from tkinter.filedialog import askopenfilename
 from timer import Timer

@@ -20,17 +20,20 @@ class Grid():
         self.surface = pygame.Surface((self.width,self.height))
         self.draw()
         self.availableFormats = [("All files", "*.*"),("Portable Network Graphics", "*.png"), ("JPEG", "*.jpg"), ("GIF", "*.gif")]
-        BLACK = (0, 0, 0)
+        BLACK = (60,60,60)
         self.pen_colour = BLACK
         self.pen_size = 1
         self.pen_type = 'pen'
-        self.task = []
-        self.start = None
 
+        self.start = None
         self.end = None
 
-    def draw(self, win = None):
-        self.win.blit(self.surface,(0,0))
+        self.undo_states = []
+        self.undo_states.append([[cube.color for cube in row] for row in self.cubes ][:])
+        self.redo_states = []
+
+    def draw(self):
+        # self.win.blit(self.surface,(0,0))
                 # Draw Cubes
         for i in range(self.rows):
             for j in range(self.cols):
@@ -48,6 +51,8 @@ class Grid():
         pygame.display.update()
 
     def clicked(self,i,j):
+        if type(i) is not int or type(j) is not int:
+            return -1
         if i < 0 or i >= self.rows or j < 0 or j >= self.cols:
             return -1
 
@@ -77,9 +82,10 @@ class Grid():
             for y in range(max(0,j-self.pen_size+1),min(j+self.pen_size,self.cols)):
                 self.cubes[x][y].color = self.pen_colour
         self.draw()
-        
 
     def delete(self,i,j):
+        if type(i) is not int or type(j) is not int:
+            return -1
         if i < 0 or i >= self.rows or j < 0 or j >= self.cols:
             return -1
         for x in range(max(0,i-self.pen_size+1),min(i+self.pen_size,self.rows)):
@@ -131,8 +137,9 @@ class Grid():
                 cube.draw()
         self.draw_grid = False
         self.draw()
+        self.undo_redo_reset()
 
-    def save(self):                            # save the current screen to a file
+    def save(self):
 
         window = Tk()
         window.withdraw()
@@ -143,19 +150,19 @@ class Grid():
 
         size = (self.width,self.height)
         pos = (0,0)
-        image = pygame.Surface(size)                # Create image surface
+        image = pygame.Surface(size)       
         toggle = False
         if self.draw_grid:
             self.draw_grid = False
             self.draw()
             toggle = True
 
-        image.blit(self.win,(0,0),(pos,size))       # Blit portion of the display to the image
+        image.blit(self.win,(0,0),(pos,size))
 
         if toggle:
             self.draw_grid = True
             self.draw()
-        pygame.image.save(image,name)               # Save the image to the disk
+        pygame.image.save(image,name)
 
     def load(self):
         window = Tk()
@@ -165,11 +172,12 @@ class Grid():
             return
             
         img = pygame.transform.scale(pygame.image.load(path), (self.rows,self.cols))
+        self.undo_redo_reset()
 
-        for i in range(self.cols):
-            for j in range(self.rows):
+        for i in range(self.rows):
+            for j in range(self.cols):
                 # for images there are 4 channels and we only need 3 4th channel is for opacity
-                self.cubes[i][j].color = tuple(img.get_at((i,j))[0:3])
+                self.cubes[i][j].color = tuple(img.get_at((j,i))[0:3])
 
         self.draw()
 
@@ -207,15 +215,39 @@ class Grid():
         result.clicked(self.pen_colour)
         return result
 
+    def save_state(self):
+        temp = [[cube.color for cube in row] for row in self.cubes ][:]
+        if len(self.undo_states) > 1:
+            if temp != self.undo_states[-1]:
+                self.undo_states.append(temp)
+        else:
+            self.undo_states.append(temp)
+
     def undo(self):
-        if len(self.task) == 0 :
+        if len(self.undo_states) < 2:
             return
-        print(self.task)
-        for i in self.task:
-            print(i[0].color)
-            i[0].color = i[1]
+
+        present_state = self.undo_states.pop()
+        self.redo_states.append(present_state)
+        state = self.undo_states[-1]
+
+        for i,row in enumerate(state):
+            for j,clr in enumerate(row):
+                self.cubes[i][j].color = clr
         self.draw()
-    
+
+    def redo(self):
+        if len(self.redo_states) <1:
+            return
+
+        state = self.redo_states.pop()
+        self.undo_states.append(state)
+
+        for i,row in enumerate(state):
+            for j,clr in enumerate(row):
+                self.cubes[i][j].color = clr
+        self.draw()
+
     def set_pen_type(self,pen_type):
         if pen_type is None:
             print('pen_type can"t be None')
@@ -226,9 +258,66 @@ class Grid():
         self.draw_grid = not self.draw_grid
         self.draw()
 
-        
+    def undo_redo_reset(self):
+        self.undo_states = [] 
+        self.redo_states = []
+
+class ZoomDisplay():
+    def __init__(self,x = 0, y = 0, width = 50, height = 50, win = None) -> None:
+        self.x,self.y = x,y
+        self.width, self.height = width, height
+        self.win = win
+        self.cubes =  [
+            [Cube(i, j, width, height, 5, 5, win, x = self.x, y=self.y)
+             for j in range(5)]
+            for i in range(5)
+        ]
+        self.zoom = True
+
+    def draw(self):
+        for row in self.cubes:
+            for cube in row:
+                cube.draw()
+
+    def update(self,board):
+        x, y = pygame.mouse.get_pos()
+        gap = board.width // board.rows
+        y //= gap
+        x //= gap
+
+        if (x < 0 or x >= board.rows or y < 0 or y >= board.cols) or not self.zoom:
+            for row in self.cubes:
+                for cube in row:
+                    cube.color = (255,255,255)
+            self.draw()
+            return 
+
+        i, j = y, x
+
+        a = 0
+        for x in range(max(0,i-2),min(i+3,board.rows)):
+            b = 0
+            for y in range(max(0,j-2),min(j+3,board.cols)):
+                self.cubes[a][b].color = board.cubes[x][y].color
+                b += 1
+            a += 1
+        self.draw()
+
+    def toggle_zoom(self):
+        self.zoom = not self.zoom
+
+    def is_hovering(self) -> bool:
+        #Pos is the mouse position or a tuple of (x,y) coordinates
+        pos = pygame.mouse.get_pos()
+        return (
+            pos[0] > self.x
+            and pos[0] < self.x + self.width
+            and pos[1] > self.y
+            and pos[1] < self.y + self.height
+        )
+
 class Cube():
-    def __init__(self,row, col, width, height, cols, rows,win):
+    def __init__(self,row, col, width, height, cols, rows,win, x = 0, y = 0):
         self.row = row
         self.col = col
         self.width = width
@@ -239,13 +328,14 @@ class Cube():
         self.win = win
         WHITE = (255,255,255)
         self.color = WHITE
+        self.x, self.y = x, y 
 
     def draw(self):
         rowGap = self.height / self.rows
         colGap = self.width / self.cols
         x = self.col * colGap
         y = self.row * rowGap
-        pygame.draw.rect(self.win, self.color, pygame.Rect(x, y, colGap, rowGap))
+        pygame.draw.rect(self.win, self.color, pygame.Rect(x+self.x, y+self.y, colGap, rowGap))
 
     def reset(self):
         WHITE = (255,255,255)
