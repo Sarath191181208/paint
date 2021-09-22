@@ -1,5 +1,5 @@
 import pygame 
-from colours import * 
+from widgets.colours import * 
 from tkinter import Tk,colorchooser
 
 class ColourBar():

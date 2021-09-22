@@ -1,9 +1,9 @@
 
 import pygame
-from button_matrices import fill_matrix_img
 import tkinter
 from tkinter.filedialog import askopenfilename
-from timer import Timer
+from widgets.timer import Timer
+
 def convert_matrix_to_img(img_matrix):
     dimension_x,dimension_y = len(img_matrix),len(img_matrix[0])
     new_img = pygame.Surface((dimension_x,dimension_y))

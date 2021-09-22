@@ -1,4 +1,3 @@
-from colours import BLACK
 import pygame
 import time
 from tkinter import Tk
@@ -43,9 +42,9 @@ class Grid():
             col_gap = self.height / self.cols
 
             for i in range(self.rows+1):
-                pygame.draw.line(self.win, BLACK, (0, i*row_gap),(self.height, row_gap*i))
+                pygame.draw.line(self.win, (40,40,40), (0, i*row_gap),(self.height, row_gap*i))
             for i in range(self.cols+1):
-                pygame.draw.line(self.win, BLACK, (i*col_gap, 0), (col_gap*i, self.width))
+                pygame.draw.line(self.win, (40,40,40), (i*col_gap, 0), (col_gap*i, self.width))
 
 
         pygame.display.update()
@@ -266,11 +265,12 @@ class ZoomDisplay():
     def __init__(self,x = 0, y = 0, width = 50, height = 50, win = None) -> None:
         self.x,self.y = x,y
         self.width, self.height = width, height
+        self.rows,self.cols = 5,5
         self.win = win
         self.cubes =  [
             [Cube(i, j, width, height, 5, 5, win, x = self.x, y=self.y)
-             for j in range(5)]
-            for i in range(5)
+             for j in range(self.cols)]
+            for i in range(self.rows)
         ]
         self.zoom = True
 
@@ -295,12 +295,13 @@ class ZoomDisplay():
         i, j = y, x
 
         a = 0
-        for x in range(max(0,i-2),min(i+3,board.rows)):
+        for x in range(max(0,i-self.rows//2),min(i+self.rows//2+1,board.rows)):
             b = 0
-            for y in range(max(0,j-2),min(j+3,board.cols)):
+            for y in range(max(0,j-self.cols//2),min(j+self.cols//2 +1,board.cols)):
                 self.cubes[a][b].color = board.cubes[x][y].color
                 b += 1
             a += 1
+
         self.draw()
 
     def toggle_zoom(self):

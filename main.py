@@ -1,4 +1,3 @@
-from val_nav import ValNav
 import pygame
 from pyautogui import size
 from tkinter import Tk
@@ -7,13 +6,16 @@ from tkinter import Tk
 from tkinter import messagebox
 import os
 
-from canvas import Grid, ZoomDisplay
+from widgets.canvas import Grid, ZoomDisplay
 # from slider import Slider
-from buttons import Button
-from colorbar import ColourBar
-from timer import Timer
-from colours import *
-from button_images import *
+from widgets.buttons import Button
+from widgets.colorbar import ColourBar
+from widgets.timer import Timer
+from widgets.colours import *
+from widgets.button_images import *
+from widgets.val_nav import ValNav
+
+
 pygame.init()
 
 class PositionTracker():
@@ -134,7 +136,7 @@ def main():  # sourcery no-metrics
     # size of the screen from pyautogui
     screen_x,screen_y = size()
     # screen_x,screen_y = 1200,800
-    pixel_x,pixel_y = 512,512
+    pixel_x,pixel_y = 64,64
     screen_x,screen_y = screen_x//64,screen_y//64
     # screen_x,screen_y = screen_x//pixel_x,screen_y//pixel_y
     screen_x = min(8,screen_x,screen_y)

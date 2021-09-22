@@ -1,6 +1,6 @@
 import pygame
-from buttons import Button
-from button_images import upImage, downImage
+from widgets.buttons import Button
+from widgets.button_images import upImage, downImage
 
 def PYtxt(txt: str, fontSize: int = 28, font: str = 'freesansbold.ttf', fontColour: tuple = (0, 0, 0)):
     return (pygame.font.Font(font, fontSize)).render(txt, True, fontColour)
